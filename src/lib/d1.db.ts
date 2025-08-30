@@ -49,13 +49,16 @@ export class D1Storage implements IStorage {
   constructor() {
     // 在 Cloudflare Pages 环境中，DB 会通过绑定注入到全局环境
     this.db = (globalThis as any).DB;
-    if (!this.db) {
-      throw new Error('D1 database not found. Make sure DB is bound in wrangler.toml');
+    if (!this.db && typeof window === 'undefined') {
+      // 在构建时或服务端渲染时，DB 可能不可用，这是正常的
+      console.warn('D1 database not available during build time');
     }
   }
 
   // ---------- 播放记录 ----------
   async getPlayRecord(userName: string, key: string): Promise<PlayRecord | null> {
+    if (!this.db) return null;
+
     try {
       const result = await this.db
         .prepare('SELECT * FROM watch_history WHERE user_id = (SELECT id FROM users WHERE username = ?) AND movie_id = ? AND episode = ?')
@@ -83,15 +86,17 @@ export class D1Storage implements IStorage {
   }
 
   async setPlayRecord(userName: string, key: string, record: PlayRecord): Promise<void> {
+    if (!this.db) return;
+
     try {
-      const [source, movieId] = key.split('+');
+      const [_source, movieId] = key.split('+');
 
       // 确保用户存在
       await this.ensureUserExists(userName);
 
       await this.db
         .prepare(`
-          INSERT OR REPLACE INTO watch_history 
+          INSERT OR REPLACE INTO watch_history
           (user_id, movie_id, title, poster, year, episode, progress, duration, last_watched, updated_at)
           VALUES (
             (SELECT id FROM users WHERE username = ?),
@@ -116,6 +121,8 @@ export class D1Storage implements IStorage {
   }
 
   async getAllPlayRecords(userName: string): Promise<{ [key: string]: PlayRecord }> {
+    if (!this.db) return {};
+
     try {
       const results = await this.db
         .prepare('SELECT * FROM watch_history WHERE user_id = (SELECT id FROM users WHERE username = ?) ORDER BY last_watched DESC')
@@ -148,12 +155,14 @@ export class D1Storage implements IStorage {
   }
 
   async deletePlayRecord(userName: string, key: string): Promise<void> {
+    if (!this.db) return;
+
     try {
-      const [source, movieId] = key.split('+');
+      const [_source, movieId] = key.split('+');
 
       await this.db
         .prepare('DELETE FROM watch_history WHERE user_id = (SELECT id FROM users WHERE username = ?) AND movie_id = ? AND episode = ?')
-        .bind(userName, movieId, source)
+        .bind(userName, movieId, _source)
         .run();
     } catch (error) {
       console.error('删除播放记录失败:', error);
@@ -163,8 +172,10 @@ export class D1Storage implements IStorage {
 
   // ---------- 收藏 ----------
   async getFavorite(userName: string, key: string): Promise<Favorite | null> {
+    if (!this.db) return null;
+
     try {
-      const [source, movieId] = key.split('+');
+      const [_source, movieId] = key.split('+');
 
       const result = await this.db
         .prepare('SELECT * FROM favorites WHERE user_id = (SELECT id FROM users WHERE username = ?) AND movie_id = ?')
@@ -174,7 +185,7 @@ export class D1Storage implements IStorage {
       if (!result) return null;
 
       return {
-        source_name: source,
+        source_name: _source,
         total_episodes: 1,
         title: result.title as string,
         year: result.year as string,
@@ -189,15 +200,17 @@ export class D1Storage implements IStorage {
   }
 
   async setFavorite(userName: string, key: string, favorite: Favorite): Promise<void> {
+    if (!this.db) return;
+
     try {
-      const [source, movieId] = key.split('+');
+      const [_source, movieId] = key.split('+');
 
       // 确保用户存在
       await this.ensureUserExists(userName);
 
       await this.db
         .prepare(`
-          INSERT OR REPLACE INTO favorites 
+          INSERT OR REPLACE INTO favorites
           (user_id, movie_id, title, poster, year, type, created_at)
           VALUES (
             (SELECT id FROM users WHERE username = ?),
@@ -220,6 +233,8 @@ export class D1Storage implements IStorage {
   }
 
   async getAllFavorites(userName: string): Promise<{ [key: string]: Favorite }> {
+    if (!this.db) return {};
+
     try {
       const results = await this.db
         .prepare('SELECT * FROM favorites WHERE user_id = (SELECT id FROM users WHERE username = ?) ORDER BY created_at DESC')
@@ -249,8 +264,10 @@ export class D1Storage implements IStorage {
   }
 
   async deleteFavorite(userName: string, key: string): Promise<void> {
+    if (!this.db) return;
+
     try {
-      const [source, movieId] = key.split('+');
+      const [_source, movieId] = key.split('+');
 
       await this.db
         .prepare('DELETE FROM favorites WHERE user_id = (SELECT id FROM users WHERE username = ?) AND movie_id = ?')
@@ -264,6 +281,8 @@ export class D1Storage implements IStorage {
 
   // ---------- 用户管理 ----------
   async registerUser(userName: string, password: string): Promise<void> {
+    if (!this.db) return;
+
     try {
       await this.db
         .prepare('INSERT INTO users (username, password, created_at, updated_at) VALUES (?, ?, datetime(\'now\'), datetime(\'now\'))')
@@ -276,6 +295,8 @@ export class D1Storage implements IStorage {
   }
 
   async verifyUser(userName: string, password: string): Promise<boolean> {
+    if (!this.db) return false;
+
     try {
       const result = await this.db
         .prepare('SELECT password FROM users WHERE username = ?')
@@ -290,6 +311,8 @@ export class D1Storage implements IStorage {
   }
 
   async checkUserExist(userName: string): Promise<boolean> {
+    if (!this.db) return false;
+
     try {
       const result = await this.db
         .prepare('SELECT id FROM users WHERE username = ?')
@@ -304,6 +327,8 @@ export class D1Storage implements IStorage {
   }
 
   async changePassword(userName: string, newPassword: string): Promise<void> {
+    if (!this.db) return;
+
     try {
       await this.db
         .prepare('UPDATE users SET password = ?, updated_at = datetime(\'now\') WHERE username = ?')
@@ -316,6 +341,8 @@ export class D1Storage implements IStorage {
   }
 
   async deleteUser(userName: string): Promise<void> {
+    if (!this.db) return;
+
     try {
       // 删除用户相关的所有数据
       await this.db
@@ -330,21 +357,23 @@ export class D1Storage implements IStorage {
   }
 
   // ---------- 搜索历史 ----------
-  async getSearchHistory(userName: string): Promise<string[]> {
+  async getSearchHistory(_userName: string): Promise<string[]> {
     // D1 版本暂不实现搜索历史，返回空数组
     return [];
   }
 
-  async addSearchHistory(userName: string, keyword: string): Promise<void> {
+  async addSearchHistory(_userName: string, _keyword: string): Promise<void> {
     // D1 版本暂不实现搜索历史
   }
 
-  async deleteSearchHistory(userName: string, keyword?: string): Promise<void> {
+  async deleteSearchHistory(_userName: string, _keyword?: string): Promise<void> {
     // D1 版本暂不实现搜索历史
   }
 
   // ---------- 用户列表 ----------
   async getAllUsers(): Promise<string[]> {
+    if (!this.db) return [];
+
     try {
       const results = await this.db
         .prepare('SELECT username FROM users ORDER BY created_at DESC')
@@ -363,31 +392,33 @@ export class D1Storage implements IStorage {
     return null;
   }
 
-  async setAdminConfig(config: AdminConfig): Promise<void> {
+  async setAdminConfig(_config: AdminConfig): Promise<void> {
     // D1 版本暂不实现管理员配置
   }
 
   // ---------- 跳过配置 ----------
-  async getSkipConfig(userName: string, source: string, id: string): Promise<SkipConfig | null> {
+  async getSkipConfig(_userName: string, _source: string, _id: string): Promise<SkipConfig | null> {
     // D1 版本暂不实现跳过配置
     return null;
   }
 
-  async setSkipConfig(userName: string, source: string, id: string, config: SkipConfig): Promise<void> {
+  async setSkipConfig(_userName: string, _source: string, _id: string, _config: SkipConfig): Promise<void> {
     // D1 版本暂不实现跳过配置
   }
 
-  async deleteSkipConfig(userName: string, source: string, id: string): Promise<void> {
+  async deleteSkipConfig(_userName: string, _source: string, _id: string): Promise<void> {
     // D1 版本暂不实现跳过配置
   }
 
-  async getAllSkipConfigs(userName: string): Promise<{ [key: string]: SkipConfig }> {
+  async getAllSkipConfigs(_userName: string): Promise<{ [key: string]: SkipConfig }> {
     // D1 版本暂不实现跳过配置
     return {};
   }
 
   // ---------- 数据清理 ----------
   async clearAllData(): Promise<void> {
+    if (!this.db) return;
+
     try {
       await this.db.prepare('DELETE FROM watch_history').run();
       await this.db.prepare('DELETE FROM favorites').run();
@@ -400,6 +431,8 @@ export class D1Storage implements IStorage {
 
   // ---------- 辅助方法 ----------
   private async ensureUserExists(userName: string): Promise<void> {
+    if (!this.db) return;
+
     const exists = await this.checkUserExist(userName);
     if (!exists) {
       // 如果用户不存在，创建一个默认用户

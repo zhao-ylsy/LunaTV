@@ -38,7 +38,9 @@
 1. 在 Cloudflare Dashboard 中，进入 **Workers 和 Pages** → **D1 SQL 数据库**
 2. 点击 **创建数据库**，输入数据库名称 (如: `lunatv-db`)
 3. 创建完成后，点击数据库名称进入详情页
-4. 在 **控制台** 标签页中，复制 `D1初始化.sql` 文件的内容并执行
+4. 在 **控制台** 标签页中，按照 `D1初始化步骤.md` 文件中的说明，**逐个执行** SQL 语句
+   - ⚠️ **重要**: 每次只执行一个 SQL 语句，不要复制粘贴整个文件
+   - 等待每个语句执行完成后再执行下一个
 
 ### 4. 绑定 D1 数据库
 
@@ -103,7 +105,6 @@
 ### 1. 配置文件修改
 - **next.config.js**: 添加了 CF_PAGES 环境变量支持，在 Cloudflare Pages 环境下使用 `export` 模式
 - **package.json**: 添加了 `pages:build` 脚本用于 Cloudflare Pages 构建
-- **wrangler.toml**: 创建了 Cloudflare Workers 配置文件
 - **_headers**: 添加了安全头和缓存控制
 - **_redirects**: 配置了 Next.js 路由重定向规则
 
