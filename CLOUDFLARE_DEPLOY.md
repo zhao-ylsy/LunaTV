@@ -1,12 +1,62 @@
-# LunaTV Cloudflare Pages 部署指南
+# LunaTV 部署指南
 
-## 前置准备
+## ⚠️ 重要说明
 
-1. 确保你有 Cloudflare 账户
-2. 将项目推送到 GitHub 仓库
-3. 准备好管理员用户名和密码
+由于 LunaTV 项目包含大量 API 路由和服务端功能，**不适合直接部署到 Cloudflare Pages**（静态托管）。
 
-## 部署步骤
+推荐以下部署方案：
+
+## 🚀 推荐方案
+
+### 方案 1: Vercel 部署（推荐）
+
+Vercel 对 Next.js 有完美支持，包括 API 路由和服务端功能。
+
+1. **Fork 项目**到你的 GitHub
+2. **登录 Vercel**，导入 GitHub 仓库
+3. **设置环境变量**：
+   - `USERNAME`: 管理员用户名
+   - `PASSWORD`: 管理员密码
+   - `NEXT_PUBLIC_STORAGE_TYPE`: `upstash`
+   - `UPSTASH_URL`: Upstash Redis URL
+   - `UPSTASH_TOKEN`: Upstash Redis Token
+4. **部署**即可
+
+### 方案 2: Docker 部署
+
+使用 Docker 在 VPS 或云服务器上部署：
+
+```bash
+# 克隆项目
+git clone https://github.com/your-username/LunaTV.git
+cd LunaTV
+
+# 构建并运行
+docker build -t lunatv .
+docker run -d -p 3000:3000 \
+  -e USERNAME=admin \
+  -e PASSWORD=your_password \
+  -e NEXT_PUBLIC_STORAGE_TYPE=redis \
+  -e REDIS_URL=redis://your-redis:6379 \
+  lunatv
+```
+
+## 🔧 Cloudflare Pages 替代方案
+
+如果你坚持使用 Cloudflare，可以考虑：
+
+### 方案 3: Cloudflare Workers + D1（高级）
+
+需要重构项目以适应 Cloudflare Workers 环境，这需要：
+1. 将 API 路由改写为 Workers 函数
+2. 使用 Cloudflare D1 数据库
+3. 前端使用静态部署
+
+这需要大量的代码修改，不在当前指南范围内。
+
+## 📋 如果仍要尝试 Cloudflare Pages
+
+虽然不推荐，但如果你想尝试，可以：
 
 ### 1. 创建 Cloudflare Pages 项目
 
@@ -14,116 +64,37 @@
 2. 进入 **Workers 和 Pages** → **创建应用程序** → **Pages**
 3. 选择 **连接到 Git**，选择你的 GitHub 仓库
 4. 配置构建设置：
-   - **构建命令**: `pnpm install --frozen-lockfile && pnpm run pages:build`
-   - **构建输出目录**: `.vercel/output/static`
+   - **构建命令**: `pnpm install --frozen-lockfile && pnpm run build`
+   - **构建输出目录**: `out`
    - **Root 目录**: `/` (保持默认)
 
-### 2. 设置环境变量
+**注意**: 这种方式会失去所有 API 功能，项目将无法正常工作。
 
-在 Pages 项目设置中添加以下环境变量：
+## 💡 总结
 
-#### 基础配置
-- `CF_PAGES`: `true`
-- `PASSWORD`: `你的管理员密码`
-- `USERNAME`: `你的管理员用户名`
-- `NEXT_PUBLIC_STORAGE_TYPE`: `d1`
+**LunaTV 是一个功能丰富的 Next.js 应用**，包含：
+- 多个 API 路由
+- 服务端渲染
+- 数据库操作
+- 用户认证
+- 实时功能
 
-#### 可选配置
-- `SITE_NAME`: `LunaTV` (或你想要的站点名称)
-- `ANNOUNCEMENT`: `自定义公告内容`
-- `NEXT_PUBLIC_ENABLE_REGISTER`: `false` (建议关闭公开注册)
+这些功能使其**更适合部署到支持服务端功能的平台**，如：
+- ✅ **Vercel**（最佳选择）
+- ✅ **Netlify Functions**
+- ✅ **Docker + VPS**
+- ✅ **Railway**
+- ✅ **Render**
 
-### 3. 创建 D1 数据库
+而不是静态托管平台如 Cloudflare Pages。
 
-1. 在 Cloudflare Dashboard 中，进入 **Workers 和 Pages** → **D1 SQL 数据库**
-2. 点击 **创建数据库**，输入数据库名称 (如: `lunatv-db`)
-3. 创建完成后，点击数据库名称进入详情页
-4. 在 **控制台** 标签页中，按照 `D1初始化步骤.md` 文件中的说明，**逐个执行** SQL 语句
-   - ⚠️ **重要**: 每次只执行一个 SQL 语句，不要复制粘贴整个文件
-   - 等待每个语句执行完成后再执行下一个
+## 🔄 如果你想继续使用 Cloudflare
 
-### 4. 绑定 D1 数据库
+建议考虑：
+1. **Cloudflare Workers** + **D1** + **静态前端**（需要重构）
+2. **Vercel** + **Cloudflare** 作为 CDN
+3. **Docker** 部署到支持 Cloudflare 的 VPS
 
-1. 回到你的 Pages 项目设置
-2. 进入 **函数** → **D1 数据库绑定**
-3. 添加绑定：
-   - **变量名**: `DB`
-   - **D1 数据库**: 选择刚创建的数据库
+## 📞 需要帮助？
 
-### 5. 设置兼容性标志
-
-1. 在 Pages 项目设置中，进入 **函数** → **兼容性标志**
-2. 添加标志: `nodejs_compat`
-
-### 6. 部署和测试
-
-1. 触发重新部署（可以通过推送代码或手动重新部署）
-2. 部署完成后访问分配的域名
-3. 使用设置的用户名和密码登录
-
-## 故障排除
-
-### 构建失败
-- 检查 Node.js 版本是否兼容
-- 确保所有依赖都在 package.json 中正确声明
-- 查看构建日志中的具体错误信息
-
-### 数据库连接问题
-- 确认 D1 数据库已正确绑定
-- 检查数据库初始化 SQL 是否执行成功
-- 验证环境变量 `NEXT_PUBLIC_STORAGE_TYPE` 设置为 `d1`
-
-### 功能异常
-- 检查所有必需的环境变量是否设置
-- 确认兼容性标志 `nodejs_compat` 已添加
-- 查看 Functions 日志了解运行时错误
-
-## 自定义域名
-
-1. 在 Pages 项目中进入 **自定义域**
-2. 添加你的域名
-3. 按照提示配置 DNS 记录
-
-## 安全建议
-
-1. 设置强密码
-2. 关闭公开注册 (`NEXT_PUBLIC_ENABLE_REGISTER=false`)
-3. 定期备份 D1 数据库
-4. 监控访问日志
-
-## 更新项目
-
-每次推送到主分支都会自动触发重新部署。如需手动部署：
-1. 进入 Pages 项目
-2. 点击 **部署** 标签
-3. 选择 **创建新部署**
-
-## 项目修改总结
-
-为了支持 Cloudflare Pages 部署，我已经为你的项目做了以下修改：
-
-### 1. 配置文件修改
-- **next.config.js**: 添加了 CF_PAGES 环境变量支持，在 Cloudflare Pages 环境下使用 `export` 模式
-- **package.json**: 添加了 `pages:build` 脚本用于 Cloudflare Pages 构建
-- **_headers**: 添加了安全头和缓存控制
-- **_redirects**: 配置了 Next.js 路由重定向规则
-
-### 2. D1 数据库支持
-- **src/lib/d1.db.ts**: 创建了完整的 D1Storage 类，包含 D1 类型定义和所有必需的数据库操作
-- **src/lib/db.ts**: 更新了存储类型支持，添加了 'd1' 选项
-- **D1初始化.sql**: 创建了数据库初始化脚本
-
-### 3. 部署文档
-- **CLOUDFLARE_DEPLOY.md**: 详细的部署指南和故障排除说明
-
-## 下一步操作
-
-1. 将这些更改提交到你的 GitHub 仓库
-2. 按照 `CLOUDFLARE_DEPLOY.md` 中的步骤进行部署
-3. 测试所有功能是否正常工作
-
-## 注意事项
-
-- D1 数据库版本暂时不支持搜索历史、管理员配置和跳过配置功能
-- 如需这些功能，可以考虑使用 Upstash Redis 替代方案
-- 确保在生产环境中设置强密码并关闭公开注册
+如果你需要帮助选择合适的部署方案或进行项目重构，请告诉我你的具体需求和偏好！

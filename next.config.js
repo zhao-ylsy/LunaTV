@@ -2,9 +2,7 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 
 const nextConfig = {
-  output: process.env.CF_PAGES ? 'export' : 'standalone',
-  trailingSlash: process.env.CF_PAGES ? true : false,
-  distDir: process.env.CF_PAGES ? '.vercel/output/static' : '.next',
+  output: 'standalone',
   eslint: {
     dirs: ['src'],
   },
