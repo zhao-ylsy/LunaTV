@@ -1,0 +1,14 @@
+name = "lunatv"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+[env.production]
+name = "lunatv"
+
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "lunatv-db"
+database_id = "your-database-id"
+
+[env.production.vars]
+NEXT_PUBLIC_STORAGE_TYPE = "d1"
