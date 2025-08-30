@@ -108,9 +108,8 @@
 - **_redirects**: 配置了 Next.js 路由重定向规则
 
 ### 2. D1 数据库支持
-- **src/lib/d1.db.ts**: 创建了完整的 D1Storage 类，实现了所有必需的数据库操作
+- **src/lib/d1.db.ts**: 创建了完整的 D1Storage 类，包含 D1 类型定义和所有必需的数据库操作
 - **src/lib/db.ts**: 更新了存储类型支持，添加了 'd1' 选项
-- **src/types/d1.d.ts**: 添加了 D1 数据库的 TypeScript 类型定义
 - **D1初始化.sql**: 创建了数据库初始化脚本
 
 ### 3. 部署文档
