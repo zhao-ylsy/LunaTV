@@ -13,10 +13,10 @@ interface D1Database {
 
 interface D1PreparedStatement {
   bind(...values: any[]): D1PreparedStatement;
-  first<T = unknown>(colName?: string): Promise<T | null>;
+  first<T = any>(colName?: string): Promise<T | null>;
   run(): Promise<D1Result>;
-  all<T = unknown>(): Promise<D1Result<T>>;
-  raw<T = unknown>(): Promise<T[]>;
+  all<T = any>(): Promise<D1Result<T>>;
+  raw<T = any>(): Promise<T[]>;
 }
 
 interface D1Result<T = unknown> {
@@ -60,7 +60,7 @@ export class D1Storage implements IStorage {
       const result = await this.db
         .prepare('SELECT * FROM watch_history WHERE user_id = (SELECT id FROM users WHERE username = ?) AND movie_id = ? AND episode = ?')
         .bind(userName, key.split('+')[1], key.split('+')[0])
-        .first();
+        .first<any>();
 
       if (!result) return null;
 
@@ -120,7 +120,7 @@ export class D1Storage implements IStorage {
       const results = await this.db
         .prepare('SELECT * FROM watch_history WHERE user_id = (SELECT id FROM users WHERE username = ?) ORDER BY last_watched DESC')
         .bind(userName)
-        .all();
+        .all<any>();
 
       const records: { [key: string]: PlayRecord } = {};
 
@@ -169,7 +169,7 @@ export class D1Storage implements IStorage {
       const result = await this.db
         .prepare('SELECT * FROM favorites WHERE user_id = (SELECT id FROM users WHERE username = ?) AND movie_id = ?')
         .bind(userName, movieId)
-        .first();
+        .first<any>();
 
       if (!result) return null;
 
@@ -224,7 +224,7 @@ export class D1Storage implements IStorage {
       const results = await this.db
         .prepare('SELECT * FROM favorites WHERE user_id = (SELECT id FROM users WHERE username = ?) ORDER BY created_at DESC')
         .bind(userName)
-        .all();
+        .all<any>();
 
       const favorites: { [key: string]: Favorite } = {};
 
@@ -280,7 +280,7 @@ export class D1Storage implements IStorage {
       const result = await this.db
         .prepare('SELECT password FROM users WHERE username = ?')
         .bind(userName)
-        .first();
+        .first<any>();
 
       return result ? result.password === password : false;
     } catch (error) {
@@ -294,7 +294,7 @@ export class D1Storage implements IStorage {
       const result = await this.db
         .prepare('SELECT id FROM users WHERE username = ?')
         .bind(userName)
-        .first();
+        .first<any>();
 
       return !!result;
     } catch (error) {
@@ -348,7 +348,7 @@ export class D1Storage implements IStorage {
     try {
       const results = await this.db
         .prepare('SELECT username FROM users ORDER BY created_at DESC')
-        .all();
+        .all<any>();
 
       return results.results.map(row => row.username as string);
     } catch (error) {
