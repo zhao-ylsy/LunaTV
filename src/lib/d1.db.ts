@@ -2,6 +2,7 @@
 
 import { AdminConfig } from './admin.types';
 import { Favorite, IStorage, PlayRecord, SkipConfig } from './types';
+import '../types/d1';
 
 // D1 数据库存储实现
 export class D1Storage implements IStorage {
@@ -46,10 +47,10 @@ export class D1Storage implements IStorage {
   async setPlayRecord(userName: string, key: string, record: PlayRecord): Promise<void> {
     try {
       const [source, movieId] = key.split('+');
-      
+
       // 确保用户存在
       await this.ensureUserExists(userName);
-      
+
       await this.db
         .prepare(`
           INSERT OR REPLACE INTO watch_history 
@@ -84,7 +85,7 @@ export class D1Storage implements IStorage {
         .all();
 
       const records: { [key: string]: PlayRecord } = {};
-      
+
       for (const row of results.results) {
         const key = `${row.episode}+${row.movie_id}`;
         records[key] = {
@@ -111,7 +112,7 @@ export class D1Storage implements IStorage {
   async deletePlayRecord(userName: string, key: string): Promise<void> {
     try {
       const [source, movieId] = key.split('+');
-      
+
       await this.db
         .prepare('DELETE FROM watch_history WHERE user_id = (SELECT id FROM users WHERE username = ?) AND movie_id = ? AND episode = ?')
         .bind(userName, movieId, source)
@@ -126,7 +127,7 @@ export class D1Storage implements IStorage {
   async getFavorite(userName: string, key: string): Promise<Favorite | null> {
     try {
       const [source, movieId] = key.split('+');
-      
+
       const result = await this.db
         .prepare('SELECT * FROM favorites WHERE user_id = (SELECT id FROM users WHERE username = ?) AND movie_id = ?')
         .bind(userName, movieId)
@@ -152,10 +153,10 @@ export class D1Storage implements IStorage {
   async setFavorite(userName: string, key: string, favorite: Favorite): Promise<void> {
     try {
       const [source, movieId] = key.split('+');
-      
+
       // 确保用户存在
       await this.ensureUserExists(userName);
-      
+
       await this.db
         .prepare(`
           INSERT OR REPLACE INTO favorites 
@@ -188,7 +189,7 @@ export class D1Storage implements IStorage {
         .all();
 
       const favorites: { [key: string]: Favorite } = {};
-      
+
       for (const row of results.results) {
         const key = `source+${row.movie_id}`;
         favorites[key] = {
@@ -212,7 +213,7 @@ export class D1Storage implements IStorage {
   async deleteFavorite(userName: string, key: string): Promise<void> {
     try {
       const [source, movieId] = key.split('+');
-      
+
       await this.db
         .prepare('DELETE FROM favorites WHERE user_id = (SELECT id FROM users WHERE username = ?) AND movie_id = ?')
         .bind(userName, movieId)
